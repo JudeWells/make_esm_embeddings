@@ -1,3 +1,4 @@
+import sys
 import torch
 import esm
 import time
@@ -5,7 +6,7 @@ import numpy as np
 import pandas as pd
 import os
 
-def make_embeddings_from_df(csv_path, save_path, model, batch_converter, batch_size=4):
+def make_embeddings_from_df(csv_path, save_path, model, batch_converter, batch_size=4, test_mode=False):
     start_time = time.time()
     # Read the CSV file
     df = pd.read_csv(csv_path)
@@ -14,6 +15,8 @@ def make_embeddings_from_df(csv_path, save_path, model, batch_converter, batch_s
     seq_len = len(df.iloc[0].mutated_sequence)
     if seq_len > 1000:
         batch_size = 1
+    if test_mode:
+        df = df.iloc[:batch_size +1]
     # Process the data in batches
     for i in range(0, len(df), batch_size):
         batch_df = df.iloc[i:i+batch_size]
@@ -51,6 +54,11 @@ def make_embeddings_from_df(csv_path, save_path, model, batch_converter, batch_s
         file.write(f"Batch size: {batch_size}\n")
 
 if __name__ == "__main__":
+    args = sys.argv
+    if len(args) > 1:
+        test_mode = True
+    else:
+        test_mode = False
     csv_dir = '../DMS_datasets'
     csv_files = [f for f in os.listdir(csv_dir) if f.endswith('.csv')]
     csv_files = [(os.path.getsize(os.path.join(csv_dir, f)),f) for f in csv_files]
@@ -66,4 +74,6 @@ if __name__ == "__main__":
         save_path = f'../DMS_datasets/embeddings/{f.split(".")[0]}'
         os.makedirs(save_path, exist_ok=True)
         input_csv_path = os.path.join(csv_dir, f[1])
-        make_embeddings_from_df(input_csv_path, save_path, model, batch_converter, batch_size=2)
+        make_embeddings_from_df(input_csv_path, save_path,
+                                model, batch_converter, batch_size=2, test_mode=test_mode)
+        
