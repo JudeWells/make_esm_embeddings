@@ -5,18 +5,15 @@ import numpy as np
 import pandas as pd
 import os
 
-def make_embeddings_from_df(csv_path, save_path, batch_size=4):
+def make_embeddings_from_df(csv_path, save_path, model, batch_converter, batch_size=4):
     start_time = time.time()
-
-    # Load the ESM model
-    model, alphabet = esm.pretrained.esm2_t33_650M_UR50D()
-    batch_converter = alphabet.get_batch_converter()
-    model.eval()  # disables dropout for deterministic results
-
     # Read the CSV file
     df = pd.read_csv(csv_path)
     embeddings = []
     logits = []
+    seq_len = len(df.iloc[0].mutated_sequence)
+    if seq_len > 1000:
+        batch_size = 1
     # Process the data in batches
     for i in range(0, len(df), batch_size):
         batch_df = df.iloc[i:i+batch_size]
@@ -45,11 +42,28 @@ def make_embeddings_from_df(csv_path, save_path, batch_size=4):
     # convert to gigabytes
     file_size = file_size / 1e9
     print(f"Disk space used: {file_size} GigaBytes")
+    with open(os.path.join(save_path, 'metadata.txt'), 'w') as file:
+        file.write(f"CSV file: {csv_path}\n")
+        file.write(f"Number of sequences: {len(df)}\n")
+        file.write(f"Sequence length: {seq_len}\n")
+        file.write(f"Execution time: {execution_time} seconds\n")
+        file.write(f"Disk space used: {file_size} GigaBytes\n")
+        file.write(f"Batch size: {batch_size}\n")
 
 if __name__ == "__main__":
-    csv_path = "/Users/judewells/Downloads/DMS_ProteinGym_substitutions/YAP1_HUMAN_Araya_2012.csv"
-    make_embeddings_from_df(
-        csv_path,
-        "./",
-        batch_size=2
-    )
+    csv_dir = '../DMS_datasets'
+    csv_files = [f for f in os.listdir(csv_dir) if f.endswith('.csv')]
+    csv_files = [(os.path.getsize(os.path.join(csv_dir, f)),f) for f in csv_files]
+    csv_files.sort()
+    # Load the ESM model
+    model, alphabet = esm.pretrained.esm2_t33_650M_UR50D()
+    batch_converter = alphabet.get_batch_converter()
+    model.eval()  # disables dropout for deterministic results
+    for f in csv_files:
+        print(f)
+        if not f.endswith('.csv'):
+            continue
+        save_path = f'../DMS_datasets/embeddings/{f.split(".")[0]}'
+        os.makedirs(save_path, exist_ok=True)
+        input_csv_path = os.path.join(csv_dir, f[1])
+        make_embeddings_from_df(input_csv_path, save_path, model, batch_converter, batch_size=2)
