@@ -14,5 +14,6 @@ date
 source /share/apps/source_files/python/python-3.9.5.source
 source /SAN/orengolab/nsp13/esm_env/bin/activate
 cd /SAN/orengolab/nsp13/protein_gym/make_esm_embeddings
+export TORCH_HOME=/SAN/orengolab/nsp13/esm_env/torch_home
 python3 make_esm_embeddings.py test
 date
