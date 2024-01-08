@@ -72,7 +72,7 @@ if __name__ == "__main__":
         print(f)
         if not f.endswith('.csv'):
             continue
-        save_path = f'../DMS_datasets/embeddings/{f.split(".")[0]}'
+        save_path = f'../DMS_datasets/embeddings_full/{f.split(".")[0]}'
         os.makedirs(save_path, exist_ok=True)
         input_csv_path = os.path.join(csv_dir, f)
         make_embeddings_from_df(input_csv_path, save_path,
