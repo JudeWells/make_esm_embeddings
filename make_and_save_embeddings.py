@@ -5,52 +5,75 @@ import time
 import numpy as np
 import pandas as pd
 import os
+import tarfile
+
+def compress_and_measure(save_path):
+    # Compress embeddings directory to tar gzip
+    gzip_file_path = os.path.join(save_path, 'embeddings.tar.gz')
+    with tarfile.open(gzip_file_path, "w:gz") as tar:
+        tar.add(save_path, arcname=os.path.basename(save_path))
+
+    # Measure the size of the gzip file
+    file_size = os.path.getsize(gzip_file_path)
+    file_size_gb = file_size / (1024 ** 3)  # Convert to gigabytes
+
+    # Remove the original embeddings directory
+    os.system(f"rm -rf {save_path}")
+
+    print(f"Size of compressed file: {file_size_gb} GB")
+
+    return file_size_gb
 
 def make_embeddings_from_df(csv_path, save_path, model, batch_converter, batch_size=4, test_mode=False):
     start_time = time.time()
+
     # Read the CSV file
     df = pd.read_csv(csv_path)
-    embeddings = []
-    logits = []
     seq_len = len(df.iloc[0].mutated_sequence)
     if seq_len > 1000:
         batch_size = 1
     if test_mode:
-        df = df.iloc[:batch_size +1]
+        df = df.iloc[:batch_size + 1]
+
+    file_index = 0
+    embeddings_batch = []
+    logits_batch = []
+
     # Process the data in batches
     for i in range(0, len(df), batch_size):
-        batch_df = df.iloc[i:i+batch_size]
+        batch_df = df.iloc[i:i + batch_size]
         batch = list(batch_df[['mutant', 'mutated_sequence']].itertuples(index=False, name=None))
         batch_labels, batch_strs, batch_tokens = batch_converter(batch)
         with torch.no_grad():
             results = model(batch_tokens, repr_layers=[33])
             representations = results["representations"][33]
-            embeddings.extend(representations.cpu().numpy())
-            logits.extend(results["logits"].cpu().numpy())
+            embeddings_batch.extend(representations.cpu().numpy())
+            logits_batch.extend(results["logits"].cpu().numpy())
 
-    # Concatenate all embeddings
-    all_embeddings = np.array(embeddings)
-    all_logits = np.array(logits)
-    # Save embeddings to disk
-    np.save(os.path.join(save_path, 'embeddings.npy'), all_embeddings)
-    np.save(os.path.join(save_path, 'logits.npy'), all_logits)
+            # Save every 100 batches
+            if len(embeddings_batch) >= 100 or i + batch_size >= len(df):
+                np.save(os.path.join(save_path, f'embeddings_{str(file_index).zfill(6)}.npy'), np.array(embeddings_batch))
+                embeddings_batch = []
+                np.save(os.path.join(save_path, f'logits_{str(file_index).zfill(6)}.npy'), np.array(logits_batch))
+                logits_batch = []
+                file_index += 1
 
     # Measure execution time
     end_time = time.time()
     execution_time = end_time - start_time
-    print(f"Execution time: {execution_time} seconds")
+    # compress embeddings director to tar gzip
+    file_size = compress_and_measure(save_path)
 
-    # Measure disk space used
-    file_size = os.path.getsize(os.path.join(save_path, 'embeddings.npy'))
-    # convert to gigabytes
-    file_size = file_size / 1e9
-    print(f"Disk space used: {file_size} GigaBytes")
-    with open(os.path.join(save_path, 'metadata.txt'), 'w') as file:
+    print(f"Execution time: {execution_time} seconds")
+    print(f"Disk space used: {file_size} GB")
+
+    # Write metadata
+    with open(os.path.join(f'../{csv_path.split("/")[-1].split(".")[0].strip()}_metadata.txt'), 'w') as file:
         file.write(f"CSV file: {csv_path}\n")
         file.write(f"Number of sequences: {len(df)}\n")
         file.write(f"Sequence length: {seq_len}\n")
         file.write(f"Execution time: {execution_time} seconds\n")
-        file.write(f"Disk space used: {file_size} GigaBytes\n")
+        file.write(f"Peak memory usage: {file_size} GB\n")
         file.write(f"Batch size: {batch_size}\n")
 
 if __name__ == "__main__":
@@ -73,6 +96,9 @@ if __name__ == "__main__":
         if not f.endswith('.csv'):
             continue
         save_path = f'../DMS_datasets/embeddings_full/{f.split(".")[0]}'
+        if os.path.exists(f"{save_path}/embeddings.npy"):
+            print(f"Skipping {f} - already completed")
+            continue
         os.makedirs(save_path, exist_ok=True)
         input_csv_path = os.path.join(csv_dir, f)
         make_embeddings_from_df(input_csv_path, save_path,
