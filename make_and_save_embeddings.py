@@ -9,7 +9,7 @@ import tarfile
 
 def compress_and_measure(save_path):
     # Compress embeddings directory to tar gzip
-    gzip_file_path = os.path.join(save_path, 'embeddings.tar.gz')
+    gzip_file_path = save_path + '.tar.gz'
     with tarfile.open(gzip_file_path, "w:gz") as tar:
         tar.add(save_path, arcname=os.path.basename(save_path))
 
@@ -42,6 +42,11 @@ def make_embeddings_from_df(csv_path, save_path, model, batch_converter, batch_s
     # Process the data in batches
     for i in range(0, len(df), batch_size):
         batch_df = df.iloc[i:i + batch_size]
+        batch_filepath = os.path.join(save_path, f'embeddings_{str(file_index).zfill(6)}.npy')
+        if os.path.exists(batch_filepath):
+            print(f"Skipping batch {file_index} - already completed")
+            file_index += 1
+            continue
         batch = list(batch_df[['mutant', 'mutated_sequence']].itertuples(index=False, name=None))
         batch_labels, batch_strs, batch_tokens = batch_converter(batch)
         with torch.no_grad():
@@ -52,7 +57,7 @@ def make_embeddings_from_df(csv_path, save_path, model, batch_converter, batch_s
 
             # Save every 100 batches
             if len(embeddings_batch) >= 100 or i + batch_size >= len(df):
-                np.save(os.path.join(save_path, f'embeddings_{str(file_index).zfill(6)}.npy'), np.array(embeddings_batch))
+                np.save(batch_filepath, np.array(embeddings_batch))
                 embeddings_batch = []
                 np.save(os.path.join(save_path, f'logits_{str(file_index).zfill(6)}.npy'), np.array(logits_batch))
                 logits_batch = []
@@ -73,7 +78,7 @@ def make_embeddings_from_df(csv_path, save_path, model, batch_converter, batch_s
         file.write(f"Number of sequences: {len(df)}\n")
         file.write(f"Sequence length: {seq_len}\n")
         file.write(f"Execution time: {execution_time} seconds\n")
-        file.write(f"Peak memory usage: {file_size} GB\n")
+        file.write(f"Disk space used: {file_size} GB\n")
         file.write(f"Batch size: {batch_size}\n")
 
 if __name__ == "__main__":

@@ -1,0 +1,6 @@
+CSV file,Number of sequences,Sequence length,Disk space used,Batch size,execution_time_seconds,execution_time_hours
+CCDB_ECOLI_Tripathi_2016.csv,1663,101,0.88,2,3188,0.89
+PIN1_HUMAN_Tsuboyama_2023_1I6C.csv,802,39,0.17,2,828,0.23
+PRKN_HUMAN_Clausen_2023.csv,8756,465,18.55,2,172553,47.93
+BLAT_ECOLX_Deng_2012.csv,4996,286,7.37,2,29710,8.25
+CCDB_ECOLI_Adkar_2012.csv,1176,101,0.62,2,2416,0.67
