@@ -86,7 +86,6 @@ def make_embeddings_from_df(csv_path, save_path, model, batch_converter, batch_s
         with torch.no_grad():
             results = model(batch_tokens, repr_layers=[33])
             for rep, logit, name in zip(results['representations'][33], results['logits'], batch_df.mutant.values):
-                print(rep.shape, logit.shape, name)
                 np.save(os.path.join(*[save_path, 'embeddings', f'{name}.npy']), rep.cpu().numpy())
                 np.save(os.path.join(*[save_path, 'logits', f'{name}.npy']), logit.cpu().numpy())
 
@@ -132,7 +131,7 @@ if __name__ == "__main__":
         print(f)
         if not f.endswith('.csv'):
             continue
-        save_path = f'../DMS_datasets/embeddings_full/{f.split(".")[0]}'
+        save_path = f'../DMS_embeddings/{f.split(".")[0]}'
         if os.path.exists(save_path + '.tar.gz'):
             print(f"Skipping {f} - already completed")
             continue
