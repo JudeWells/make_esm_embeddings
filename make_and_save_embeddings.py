@@ -59,6 +59,10 @@ def make_embeddings_from_df(csv_path, save_path, model, batch_converter, batch_s
     seq_len = len(df.iloc[0].mutated_sequence)
     if seq_len > 1000:
         batch_size = 1
+    if seq_len > 800:
+        batch_size = 2
+    if seq_len > 500:
+        batch_size = 3
     if test_mode:
         df = df.iloc[:batch_size + 1]
 
@@ -110,7 +114,7 @@ if __name__ == "__main__":
     test_mode = args.test_mode
     csv_index = args.csv_index
 
-    csv_dir = '../DMS_datasets'
+    csv_dir = '../DMS_ProteinGym_substitutions'
     csv_files = [f for f in os.listdir(csv_dir) if f.endswith('.csv')]
     csv_files = [(os.path.getsize(os.path.join(csv_dir, f)),f) for f in csv_files]
     csv_files.sort()
