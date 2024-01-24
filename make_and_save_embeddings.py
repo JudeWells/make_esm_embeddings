@@ -111,7 +111,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     test_mode = args.test_mode
-    csv_index = args.csv_index
+    csv_index = int(args.csv_index) -1 if args.csv_index is not None else None
 
     csv_dir = '../DMS_ProteinGym_substitutions'
     csv_files = [f for f in os.listdir(csv_dir) if f.endswith('.csv')]
